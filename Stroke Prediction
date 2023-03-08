@@ -1,0 +1,283 @@
+#Introduction 
+library(readr) 
+library(dplyr) 
+library(tidyr) 
+library(highcharter) 
+library(gapminder) 
+health <- read_csv("C:/Users/USER/Desktop/Desktop 2.0/NTU_Y2S2/MH3511 Data Analysis/project/archive/healthcare-dataset-stroke-data.csv") 
+str(health)
+#Data Tidying and Description 
+clean = health %>% select(age:heart_disease, avg_glucose_level:stroke) %>% filter(bmi != "N/A", smoking_status != "Unknown") 
+clean$smoking_status = factor(ifelse(clean$smoking_status == "never smoked", 0, ifelse(clean$smoking_status == "formerly smoked", 1, 2))) 
+clean$hypertension = factor(clean$hypertension) 
+clean$heart_disease = factor(clean$heart_disease) 
+clean$stroke = factor(clean$stroke) 
+clean$bmi = as.numeric(clean$bmi) 
+clean 
+str(clean)
+3 Dataset Description and Explanation 
+#stroke summary 
+stroke = as.numeric(clean$stroke) 
+n = length(stroke) 
+for (i in 1:3426) { 
+  if(stroke[i]==1){ 
+    stroke[i]=0 
+    } 
+  else{stroke[i]=1
+  } 
+} 
+summary(stroke) 
+table(stroke) 
+stroke.per = round(100*c(3246/n, 180/n)) 
+pie(stroke.per, labels = c("95% (0, if patient never had stroke)", "5% (1, if patient has had stroke)"), main = "Piechart of Stroke") 
+#age summary 
+hist(clean$age) 
+boxplot(clean$age, main = "Boxplot of clean$age") 
+summary(clean$age) 
+#bmi (incl. outlier cleaning) summary 
+outliers <- boxplot(clean$bmi, plot=FALSE)$out 
+x <- clean 
+x <- x[-which(x$bmi %in% outliers),] 
+hist(x$bmi) 
+boxplot(x$bmi,main="Boxplot of bmi without outliers") 
+#hypertension summary 
+hypertension = as.numeric(clean$hypertension) 
+n = length(hypertension) 
+for (i in 1:3426) { 
+  if(hypertension[i]==1){ 
+    hypertension[i]=0 
+  } else{hypertension[i]=1 
+  } 
+} 
+summary(hypertension) 
+table(hypertension) 
+hypertension.per = round(100*c(3018/n, 408/n)) 
+hypertension.per 
+pie(hypertension.per, labels = c("88% (0, no HT)", "12% (1, HT)"), main = "Piechart of Hypertension") 
+#heart disease summary 
+heart = as.numeric(clean$heart_disease) 
+n = length(heart) 
+for (i in 1:3426) { 
+  if(heart[i]==1){ 
+    heart[i]=0 
+  } else{heart[i]=1 
+  } 
+} 
+heart.per = round(100*c(3220/n, 206/n))
+summary(heart) 
+table(heart) 
+heart.per 
+pie(heart.per, labels = c("94% (0, no HD)", "6% (1, HD)"), main = "Piechart of Heart_disease") 
+#smoking status summary 
+smoke = as.numeric(clean$smoking_status) 
+n = length(smoke) 
+for (i in 1:3426) { 
+  if(smoke[i]==1){ 
+    smoke[i]=0 
+  } else{ 
+    if (smoke[i]==2){ 
+      smoke[i]=1 
+    } else{smoke[i]=2} 
+  } 
+} 
+smoke.per = round(100*c(1852/n, 837/n, 737/n)) 
+summary(smoke) 
+table(smoke) 
+smoke.per 
+pie(smoke.per, labels = c("54% (0, former S)", "24% (1, never S)", "22% (2, S)"), main = "Piechart of smoking_status") 
+#avg glucose level (incl. cleaning) summary 
+#before removing outliers 
+myhist = hist(clean$avg_glucose_level,breaks = 30,density = 
+                30,pro=F,col="blue",xlab="",ylab="",main="The average glucose level") myx <- seq(min(clean$avg_glucose_level), max(clean$avg_glucose_level), length.out= length(clean$avg_glucose_level)) 
+mymean <- mean(clean$avg_glucose_level) 
+mysd <- sd(clean$avg_glucose_level) 
+normal <- dnorm(x = myx, mean = mymean, sd = mysd) 
+multiplier <- myhist$counts / myhist$density 
+lines(myx, normal * multiplier[1], col = "red", lwd = 2) 
+#not normal distribution 
+#remove outliers 
+outliers_ind = function(x) { 
+  qnt = quantile(x, probs=c(.25, .75)) 
+  H = 1.5 * IQR(x) 
+  IND_OUT = c() 
+  for (i in 1:length(x)) { 
+    if ((x[i]<(qnt[1] - H))|(x[i]>(qnt[2] + H))) {IND_OUT = c(IND_OUT,i)} } 
+  IND_OUT
+} 
+ind = outliers_ind(clean$avg_glucose_level) 
+#data without outliers 
+clean1 = clean[-ind,] 
+#after removing outliers 
+myhist = hist(clean1$avg_glucose_level,breaks = 30,density = 
+                30,pro=F,col="blue",xlab="",ylab="",main="The average glucose level") myx <- seq(min(clean1$avg_glucose_level), max(clean1$avg_glucose_level), length.out= length(clean1$avg_glucose_level)) 
+mymean <- mean(clean1$avg_glucose_level) 
+mysd <- sd(clean1$avg_glucose_level) 
+normal <- dnorm(x = myx, mean = mymean, sd = mysd) 
+multiplier <- myhist$counts / myhist$density 
+lines(myx, normal * multiplier[1], col = "red", lwd = 2) 
+#look like normal distribution
+# Correlation Graph 
+clean$age= as.numeric(clean$age) 
+clean$hypertension= as.numeric(clean$hypertension) 
+clean$heart_disease= as.numeric(clean$heart_disease) 
+clean$smoking_status= as.numeric(clean$smoking_status) 
+clean$stroke= as.numeric(clean$stroke) 
+#remove outliers 
+outliers <- boxplot(clean$bmi, plot=FALSE)$out 
+x <- clean 
+x <- x[-which(x$bmi %in% outliers),] 
+outliers_ind = function(x) { 
+  qnt = quantile(x, probs=c(.25, .75)) 
+  H = 1.5 * IQR(x) 
+  IND_OUT = c() 
+  for (i in 1:length(x)) { 
+    if ((x[i]<(qnt[1] - H))|(x[i]>(qnt[2] + H))) {IND_OUT = c(IND_OUT,i)} 
+  } 
+  IND_OUT 
+} 
+ind = outliers_ind(clean$avg_glucose_level) 
+#data without outliers 
+clean2 = x[-ind,] 
+#keep continuous variables only 
+clean3 = subset(clean2, select = 
+                  -c(hypertension,heart_disease,smoking_status,stroke) )
+
+
+
+library("PerformanceAnalytics") 
+chart.Correlation(clean3, histogram = TRUE, pch=19)
+# Relation to BMI and Stroke 
+outliers.bmi <- boxplot(clean$bmi, plot=FALSE)$out 
+x <- clean 
+x <- x[-which(x$bmi %in% outliers.bmi),] 
+boxplot(x$bmi ~ x$stroke, names=c("Stroke", "No Stroke"), 
+        main="BMI for stroke vs non-stroke") 
+var.test(x$bmi~x$stroke) 
+t.test(x$bmi~x$stroke, var.equal=T) 
+# Relation between BMI and Age to Average Glucose Level 
+outliers.bmi <- boxplot(clean$bmi, plot=FALSE)$out 
+outliers.gluc <- boxplot(clean$avg_glucose_level, plot=FALSE)$out x <- clean 
+x <- x[-which(x$bmi %in% outliers.bmi),] 
+x <- x[-which(x$avg_glucose_level %in% outliers.gluc),] 
+plot(log(x$bmi), x$avg_glucose_level, main = "Glucose Level against log(BMI)") plot(x$age, log(x$avg_glucose_level), main = "Glucose Level against Age") 
+#glucose ~ log(bmi) 
+r = cor(log(x$bmi), x$avg_glucose_level) 
+s_r = sqrt((1-r^2)/(nrow(x)-2)) 
+r; s_r 
+cat("\nFrom data, we have r =", r, "and S_r=", s_r,"\n\n") 
+t= r/s_r 
+cat("Upon testing the t.stat value of", t,"\nwe have p-value of", 2*pt(-t, df=nrow(x)-2), "\n\n") 
+cor.test(log(x$bmi), x$avg_glucose_level) 
+#glucose ~ age 
+r = cor(x$age, x$avg_glucose_level) 
+s_r = sqrt((1-r^2)/(nrow(x)-2)) 
+r; s_r 
+cat("\nFrom data, we have r =", r, "and S_r=", s_r,"\n\n") 
+t= r/s_r 
+cat("Upon testing the t.stat value of", t,"\nwe have p-value of", 2*pt(-t, df=nrow(x)-2),"\n\n") 
+cor.test(x$age, x$avg_glucose_level) 
+#linear glucose ~ age 
+mdl = lm(x$avg_glucose_level ~ x$age) 
+summary(mdl)
+#Relation between average glucose level and stroke 
+# A boxplot of glucose level by stroke 
+library(ggplot2) 
+clean1$stroke = as.factor(clean1$stroke) 
+ggplot(clean1, aes(x=stroke, y=avg_glucose_level, fill=stroke)) + 
+  geom_boxplot() 
+# Test of variance 
+var.test(clean1$avg_glucose_level~clean1$stroke) 
+# T-test for means 
+t.test(clean1$avg_glucose_level~clean1$stroke, alternative = "less") 
+# Create glucose level variable 
+clean$glucose_level_cat = ifelse(clean$avg_glucose_level>=180, "diabetic", ifelse(clean$avg_glucose_level>125, "hyperglycemia", 
+                                                                                  ifelse(clean$avg_glucose_level>50,"normal","hypoglycemia" 
+                                                                                  ))) 
+#contingency table for respective glucose level and patients with and without stroke table(clean$glucose_level_cat,clean$stroke) 
+# Let's use a chi-square test to check if there is a relationship between glucose level and stroke. 
+chisq.test(table(clean$glucose_level_cat,clean$stroke)) 
+# Logistic regression to study the likelihood of a patient suffering a stroke dependent on their glucose level: 
+mod = glm(clean$stroke~clean$avg_glucose_level) 
+summary(mod) 
+library(dplyr) 
+clean %>% 
+  mutate(prob = ifelse(stroke == 1, 1, 0)) %>% 
+  ggplot(aes(avg_glucose_level, prob)) + 
+  geom_point(alpha = 0.2) + 
+  geom_smooth(method = "glm", method.args = list(family = "binomial")) + 
+  labs(title = "Logistic Regression Model", 
+       x = "Glucose", 
+       y = "Probability of stroke")
+#Relation between hypertension and smoking status with heart disease 
+#heart disease ~ hypertension 
+hyp.str = table(clean$stroke, clean$hypertension) 
+table = hyp.str 
+colnames(table) = c("No HT", "Yes HT") 
+rownames(table) = c("No Stroke", "Yes Stroke") 
+table 
+#H0: there is NO association 
+#H1: there is some association 
+#if data is not prepped, do table(data$var1, data$var2) 
+expt.t = matrix(rowSums(table), ncol =1) %*% matrix(colSums(table), ncol= ncol(table)) / sum(table) 
+cat("\nExpected Values table\n\n") 
+expt.t 
+chi.stat = sum((expt.t - table)^2/expt.t) 
+chi.pval = 1 - pchisq(chi.stat, df=(2 - 1)*(2 - 1)) 
+cat("\nFor stroke against hypertension, 
+X-squared value =", chi.stat,", under v =",(2-1)*(2-1),"where \n p-value =", chi.pval, "\n\n") 
+chisq.test(table) 
+#to show percentages as table 
+cat("\nProportion table\n") 
+prop.table(table) 
+#stroke ~ smoking status 
+smk.str = table(clean$stroke, clean$smoking_status) 
+table = smk.str 
+colnames(table) = c("Former S", "Never S", "Current S") 
+rownames(table) = c("No Stroke", "Yes Stroke") 
+table 
+#H0: there is NO association 
+#H1: there is some association 
+#if data is not prepped, do table(data$var1, data$var2) 
+expt.t = matrix(rowSums(table), ncol =1) %*% matrix(colSums(table), ncol= ncol(table)) / sum(table) 
+cat("\nExpected Values table\n\n") 
+expt.t 
+chi.stat = sum((expt.t - table)^2/expt.t) 
+chi.pval = 1 - pchisq(chi.stat, df=(2 - 1)*(2 - 1))
+
+
+
+cat("\nFor stroke against smoke, 
+X-squared value =", chi.stat,", under v =",(2-1)*(2-1),"where \n p-value =", chi.pval, "\n\n") 
+chisq.test(table) 
+#to show percentages as table 
+cat("\nProportion table\n") 
+prop.table(table)
+# Pattern among patients with stroke 
+#creating another data frame to add columns 
+sbdata <- health %>% select(age:heart_disease, avg_glucose_level:stroke) %>% filter(bmi != "N/A", smoking_status != "Unknown") 
+sbdata <- sbdata %>% mutate(D= if_else(sbdata$heart_disease==1, "heart disease", "no heart disease")) 
+sbdata <- sbdata %>% mutate(E= if_else(sbdata$hypertension==1, "hypertension", "no hypertension")) 
+dout <- data_to_hierarchical(sbdata, c(D,E,smoking_status), stroke ) hchart(dout, type="sunburst") 
+# Multiple Logistic Regression 
+#remove outliers 
+outliers <- boxplot(clean$bmi, plot=FALSE)$out 
+x <- clean 
+x <- x[-which(x$bmi %in% outliers),] 
+outliers_ind = function(x) { 
+  qnt = quantile(x, probs=c(.25, .75)) 
+  H = 1.5 * IQR(x) 
+  IND_OUT = c() 
+  for (i in 1:length(x)) { 
+    if ((x[i]<(qnt[1] - H))|(x[i]>(qnt[2] + H))) {IND_OUT = c(IND_OUT,i)} 
+  } 
+  IND_OUT 
+} 
+ind = outliers_ind(clean$avg_glucose_level) 
+#data without outliers 
+clean2 = x[-ind,] 
+#logistic regression analysis
+
+
+
+mod = glm(clean2$stroke~clean2$age+clean2$hypertension+clean2$heart_disease+clean2 $avg_glucose_level+clean2$bmi+clean2$smoking_status) 
+summary(mod)
